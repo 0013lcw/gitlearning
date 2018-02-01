@@ -1,0 +1,151 @@
+package com.bh.d406.ui.service.background;
+
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.apache.ibatis.session.SqlSessionFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.stereotype.Service;
+
+import com.bh.d406.ui.common.util.DateUtil;
+import com.bh.d406.ui.mysql.dao.LogMapperDao;
+import com.bh.d406.ui.service.ServiceException;
+import com.bh.d406.ui.vo.background.ApMeasureVo;
+import com.bh.d406.ui.vo.background.TrackInforVo;
+import com.bh.d406.ui.vo.devmap.MinConvexPolygon;
+import com.bh.d406.ui.vo.web.Pagination;
+
+@Service("logInforService")
+public class LogInforService {
+	Logger logger = LoggerFactory.getLogger(LogInforService.class);
+	String namespace = "com.bh.d406.ui.mysql.dao.LogMapperDao.";
+	@Autowired @Qualifier("mysqlSqlSessionFactory")
+	private SqlSessionFactory mysqlSqlSessionFactory;
+	@Autowired
+	private LogMapperDao logMapperDao;
+	
+	public Pagination getSpyLog(Pagination pagination,Map<String, String> paramsMap) throws ServiceException {
+		try {
+			pagination.queryForPage(mysqlSqlSessionFactory, namespace + "selectSpyLogs",namespace + "selectSpyLogsCount", paramsMap);
+			return pagination;
+		} catch (Exception e) {
+			e.printStackTrace();
+			logger.error(e.getMessage(), e);
+			throw new ServiceException(e);
+		}
+	}
+	
+	public Pagination getTrackInfor(Pagination pagination,Map<String, String> paramsMap) throws ServiceException {
+		try {
+			pagination.queryForPage(mysqlSqlSessionFactory, namespace + "getTrackInfor",namespace + "getTrackInforCount", paramsMap);
+			return pagination;
+		} catch (Exception e) {
+			e.printStackTrace();
+			logger.error(e.getMessage(), e);
+			throw new ServiceException(e);
+		}
+	}
+	
+	public Pagination getMacWarn(Pagination pagination,Map<String, String> paramsMap) throws ServiceException {
+		try {
+			pagination.queryForPage(mysqlSqlSessionFactory, namespace + "getMacWarn",namespace + "getMacWarnCount", paramsMap);
+			return pagination;
+		} catch (Exception e) {
+			e.printStackTrace();
+			logger.error(e.getMessage(), e);
+			throw new ServiceException(e);
+		}
+	}
+	
+	public Pagination getMacDetection(Pagination pagination,Map<String, String> paramsMap) throws ServiceException {
+		try {
+			pagination.queryForPage(mysqlSqlSessionFactory, namespace + "getMacDetection",namespace + "getMacDetectionCount", paramsMap);
+			return pagination;
+		} catch (Exception e) {
+			e.printStackTrace();
+			logger.error(e.getMessage(), e);
+			throw new ServiceException(e);
+		}
+	}
+	
+	public Pagination getEnmailLog(Pagination pagination,Map<String, String> paramsMap) throws ServiceException {
+		try {
+			pagination.queryForPage(mysqlSqlSessionFactory, namespace + "selectEmailLogs",namespace + "selectEmailLogsCount", paramsMap);
+			return pagination;
+		} catch (Exception e) {
+			e.printStackTrace();
+			logger.error(e.getMessage(), e);
+			throw new ServiceException(e);
+		}
+	}
+	
+	public Map<String,Object> trackMac(Map<String, Object> params){
+		Map<String,Object> map = new HashMap<>();	
+		List<TrackInforVo> track = logMapperDao.getDevsInfor();	
+		map.put("macs", logMapperDao.getMacsInfor(params));			
+		map.put("devs", track);
+		List<Double> topPoints = new ArrayList<>();
+		for(TrackInforVo vo:track){
+			if(!(Double.valueOf(vo.getLongitude()) == 0 && Double.valueOf(vo.getLatitude()) == 0)){
+				topPoints.add(Double.valueOf(vo.getLongitude()));
+				topPoints.add(Double.valueOf(vo.getLatitude()));
+			}			
+		}
+		int topslize=topPoints.size();
+		double[] polygeon=new double[topslize];
+		for(int i=0;i<topslize;i++){
+			polygeon[i]=topPoints.get(i);
+		}
+		double[] polres=MinConvexPolygon.toppoints(polygeon);
+		map.put("bounds", polres);
+		return map;		
+	}
+
+	public Pagination getTrackMacs(Pagination pagination,Map<String, String> paramsMap) throws ServiceException {
+		try {
+			pagination.queryForPage(mysqlSqlSessionFactory, namespace + "getTrackMacs",namespace + "getTrackMacsCount", paramsMap);
+			return pagination;
+		} catch (Exception e) {
+			e.printStackTrace();
+			logger.error(e.getMessage(), e);
+			throw new ServiceException(e); 
+		}
+	}
+	
+	 public List<List<TrackInforVo>> getGuiji(Map<String,String> param){
+		 List<List<TrackInforVo>> Guijilist = new ArrayList<>();
+		 Map<String,String> sitemap = null;
+		 List<TrackInforVo> list = null;
+		 String[] macs = param.get("macs").split(",");
+		 if(macs !=null){
+			 for(String mac:macs){
+				 sitemap = new HashMap<>();
+				 sitemap.put("mac", mac);
+				 sitemap.put("starttime", param.get("starttime"));
+				 list = logMapperDao.getMacsGuiji(sitemap);
+				 for(TrackInforVo vo:list){
+					 vo.setEndtime(DateUtil.format2String(vo.getCapturetime(), "yyyy-MM-dd HH:mm:ss"));
+				 }
+				 if(list.isEmpty()){
+					 list = new ArrayList<>();
+					 TrackInforVo vo = new TrackInforVo();
+					 vo.setMac(mac);
+					 vo.setLongitude("0");
+					 vo.setLatitude("0");
+					 list.add(vo);
+				 }
+	
+				 Guijilist.add(list);
+			 } 			 
+		 }
+		 return Guijilist;
+		 
+	 }
+	
+}
