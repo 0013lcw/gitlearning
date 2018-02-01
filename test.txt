@@ -149,3 +149,9 @@ public class LogInforService {
 	 }
 	
 }
+
+
+public String getName(){
+String name = "123456";
+return name;
+}
